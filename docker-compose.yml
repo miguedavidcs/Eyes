@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: enterprice-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "StrongPass@123"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    networks:
+      - enterprice-net
+
+  backend:
+    build:
+      context: ./Back
+    container_name: enterprice-back
+    depends_on:
+      - sqlserver
+    environment:
+      ConnectionStrings__DefaultConnection: >
+        Server=sqlserver,1433;
+        Database=EnterpriceDb;
+        User Id=sa;
+        Password=StrongPass@123;
+        TrustServerCertificate=True;
+    ports:
+      - "5000:8080"
+    networks:
+      - enterprice-net
+
+  frontend:
+    build:
+      context: ./front
+    container_name: enterprice-front
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - enterprice-net
+
+volumes:
+  sql_data:
+
+networks:
+  enterprice-net:
+    driver: bridge
