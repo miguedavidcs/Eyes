@@ -1,3 +1,4 @@
+using System.Security.Principal;
 using Back.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,7 +12,7 @@ namespace Back.Data
         }
 
         // =======================
-        // DbSets (Tablas)
+        // DbSets (Tablas) 
         // =======================
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<Role> Roles { get; set; } = null!;
@@ -28,6 +29,15 @@ namespace Back.Data
         public DbSet<Campaign> Campaigns { get; set; }
         public DbSet<CampaignLead> CampaignLeads { get; set; }
         */
+        // =======================
+        // Contabilidad / Empresa
+        // =======================
+        public DbSet<Company> Companies { get; set; } = null!;
+        public DbSet<CompanyUser> CompanyUsers { get; set; } = null!;
+        public DbSet<Account> Accounts { get; set; } = null!;
+        public DbSet<AccountingPeriod> AccountingPeriods { get; set; } = null!;
+        public DbSet<Voucher> Vouchers { get; set; } = null!;
+        public DbSet<VoucherLine> VoucherLines { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -96,9 +106,90 @@ namespace Back.Data
                 .HasQueryFilter(ur => !ur.IsDeleted);
             modelBuilder.Entity<RolePermission>()
                 .HasQueryFilter(rp => !rp.Permission.IsDeleted);
+            // =======================
+            // Configuariones 2 Entidad Company
+            // =======================
+            modelBuilder.Entity<Company>(entity =>
+            {
+                entity.HasIndex(c => c.Nit).IsUnique();
+            });
+            // =======================
+            // Configuariones 2 Entidad ComanyUser
+            // =======================
+            modelBuilder.Entity<CompanyUser>(entity =>
+            {
+                entity.HasIndex(cu => new { cu.CompanyId, cu.UserId }).IsUnique();
 
+                entity.HasOne(cu => cu.Company)
+                    .WithMany(c => c.CompanyUsers)
+                    .HasForeignKey(cu => cu.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            // =======================
+            // Configuariones 2 Entidad Account
+            // =======================
+            modelBuilder.Entity<Account>(entity =>
+            {
+                entity.HasIndex(a => new { a.CompanyId, a.Code }).IsUnique();
 
-            
+                entity.HasOne(a => a.Company)
+                    .WithMany(c => c.Accounts)
+                    .HasForeignKey(a => a.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(a => a.Parent)
+                    .WithMany()
+                    .HasForeignKey(a => a.ParentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            // =======================
+            // Configuariones 2 Entidad AccountingPeriod
+            // =======================
+            modelBuilder.Entity<AccountingPeriod>(entity =>
+            {
+                entity.HasOne(p => p.Company)
+                    .WithMany(c => c.Periods)
+                    .HasForeignKey(p => p.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            // =======================
+            // Configuariones 2 Entidad Voucher
+            // =======================
+            modelBuilder.Entity<Voucher>(entity =>
+            {
+                entity.HasIndex(v => new { v.CompanyId, v.VoucherType, v.Number }).IsUnique();
+
+                entity.HasOne(v => v.Company)
+                    .WithMany()
+                    .HasForeignKey(v => v.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(v => v.AccountingPeriod)
+                    .WithMany(p => p.Vouchers)
+                    .HasForeignKey(v => v.AccountingPeriodId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            // =======================
+            // Configuariones 2 Entidad VoucherLine
+            // =======================
+            modelBuilder.Entity<VoucherLine>(entity =>
+            {
+                entity.Property(vl => vl.DebitAmount)
+                    .HasColumnType("decimal(18,2)");
+
+                entity.Property(vl => vl.CreditAmount)
+                    .HasColumnType("decimal(18,2)");
+
+                entity.HasOne(vl => vl.Voucher)
+                    .WithMany(v => v.Lines)
+                    .HasForeignKey(vl => vl.VoucherId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(vl => vl.Account)
+                    .WithMany()
+                    .HasForeignKey(vl => vl.AccountId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }

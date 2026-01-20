@@ -201,6 +201,12 @@ using (var scope = app.Services.CreateScope())
             PermissionId = p.Id,
             
         });
+    using (var scope = app.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await AccountingSeed.SeedAsync(context);
+            await CompanyUserSeed.SeedAsync(context);
+        }
 
     context.RolePermissions.AddRange(missing);
     context.SaveChanges();
